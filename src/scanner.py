@@ -268,6 +268,16 @@ def run_scanner(
                 if not ohlc:
                     continue
 
+                # When HA mode, convert daily OHLC to HA for consistent pivots
+                if use_heikin_ashi:
+                    daily_df = stock_info.get('candles_1d')
+                    if daily_df is not None and len(daily_df) > 0:
+                        ha_daily = calculate_heikin_ashi(daily_df)
+                        last_ha = ha_daily.iloc[-1]
+                        ohlc = {'high': float(last_ha['high']),
+                                'low': float(last_ha['low']),
+                                'close': float(last_ha['close'])}
+
                 try:
                     result = scan_stock_for_date(
                         stock_symbol=stock_symbol,
