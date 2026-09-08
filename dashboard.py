@@ -330,8 +330,7 @@ def cached_universe(universe: str = 'nifty50') -> List[str]:
 
 def run() -> None:
     st.title('🎯 NSE Pivot Point Scanner')
-    ha_tag = ' · 🕯️ Heikin-Ashi' if use_ha else ''
-    st.caption(f'Stocks near Traditional Pivot levels · Willy(21) / EMA(13) · Fyers data{ha_tag}')
+    st.caption('Stocks near Traditional Pivot levels · Willy(21) / EMA(13) · Fyers data')
 
     # ------------------------------ sidebar ------------------------------
     with st.sidebar:
@@ -434,6 +433,9 @@ def run() -> None:
 
         if not is_trading_day(scan_date):
             st.warning(f'{scan_date} is a weekend/holiday — results may be limited.')
+
+        if use_ha:
+            st.success('🕯️ Heikin-Ashi active')
 
         run_btn = st.button('🔍 RUN SCAN', type='primary', use_container_width=True)
 
