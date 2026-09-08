@@ -139,6 +139,7 @@ def _fetch_live_data_impl(
                 'low': float(last['low']),
                 'close': float(last['close']),
             },
+            'candles_1d': daily_df,  # Store full daily series for HA pivot calculation
         }
 
         if pivot_tf != 'D':
