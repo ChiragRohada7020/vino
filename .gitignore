@@ -1,0 +1,50 @@
+# Environment variables (contains API keys)
+.env
+
+# NEVER commit token/secret files
+access_token.txt
+*token*.txt
+*token*.json
+auth_code*.txt
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+eggs/
+
+# Virtual environments
+venv/
+env/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Data files (generated) - but master universe CSVs MUST ship to GitHub
+data/cache/
+data/pivots/*.csv
+data/stocks/*.csv
+!data/stocks/nse_all.csv
+!data/stocks/bse_all.csv
+
+# Results (generated)
+results/*.csv
+
+# Logs
+logs/*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# SDK inspection junk
+tmp_pkg/

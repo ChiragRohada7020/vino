@@ -1,0 +1,33 @@
+# Render Blueprint — one-click deploy the Streamlit dashboard.
+#
+# After pushing to GitHub, create the service at:
+#   https://dashboard.render.com/blueprint/new
+# then pick this repo.  Configure the Fyers credentials as Render
+# Environment / Secrets (NEVER commit your .env):
+#   FYERS_APP_ID       (e.g. BQ2S8HCFQF-100)
+#   FYERS_APP_SECRET
+#   FYERS_ACCESS_TOKEN (daily-expiry JWT)
+#
+# Build / start commands are defined below so the Blueprint is self-contained.
+
+services:
+  - type: web
+    name: nse-stock-scanner
+    runtime: python3
+    region: oregon
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: streamlit run dashboard.py --server.port $PORT --server.headless true
+    healthCheckPath: /
+    envVars:
+      - key: FYERS_APP_ID
+        fromSecret: FYERS_APP_ID
+      - key: FYERS_APP_SECRET
+        fromSecret: FYERS_APP_SECRET
+      - key: FYERS_REDIRECT_URL
+        fromSecret: FYERS_REDIRECT_URL
+      - key: FYERS_ACCESS_TOKEN
+        fromSecret: FYERS_ACCESS_TOKEN
+      - key: PYTHONUNBUFFERED
+        value: "1"
+    autoDeploy: true
