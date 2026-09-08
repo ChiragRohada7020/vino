@@ -26,7 +26,7 @@ from typing import Callable, Dict, List, Optional, Tuple
 import pandas as pd
 import streamlit as st
 
-from src.candles import fetch_candles_from_api, fetch_daily_history_chunked
+from src.candles import fetch_candles_from_api, fetch_daily_history_chunked, calculate_heikin_ashi
 from src.config import DEFAULT_SCAN_MODE, MAX_DISTANCE_PERCENT, SCAN_MODES
 from src.instruments import get_nifty_50_symbols, get_universe_symbols, get_stock_instrument
 from src.pivots import (
@@ -290,10 +290,16 @@ def build_pivot_table(daily_ohlc: Dict[str, float], ref_price: float) -> pd.Data
     return pd.DataFrame(rows)
 
 
-def willy_summary(df: pd.DataFrame, length: int = 21, ema_length: int = 13) -> Dict:
-    """Latest Willy / EMA / zone / signal for one stock-timeframe."""
+def willy_summary(df: pd.DataFrame, length: int = 21, ema_length: int = 13,
+                   use_ha: bool = False) -> Dict:
+    """Latest Willy / EMA / zone / signal for one stock-timeframe.
+
+    use_ha: convert candles to Heikin-Ashi before calculating Willy.
+    """
     if df is None or len(df) < length:
         return {}
+    if use_ha:
+        df = calculate_heikin_ashi(df)
     w = calculate_willy(df, length, ema_length)
     cur_w, cur_e = w['willy'].iloc[-1], w['willy_ema'].iloc[-1]
     prev_w, prev_e = w['willy'].iloc[-2], w['willy_ema'].iloc[-2]
@@ -324,7 +330,8 @@ def cached_universe(universe: str = 'nifty50') -> List[str]:
 
 def run() -> None:
     st.title('🎯 NSE Pivot Point Scanner')
-    st.caption('Stocks near Traditional Pivot levels · Willy(21) / EMA(13) · Fyers data')
+    ha_tag = ' · 🕯️ Heikin-Ashi' if use_ha else ''
+    st.caption(f'Stocks near Traditional Pivot levels · Willy(21) / EMA(13) · Fyers data{ha_tag}')
 
     # ------------------------------ sidebar ------------------------------
     with st.sidebar:
@@ -403,6 +410,15 @@ def run() -> None:
         data_source = st.radio('Data source', ['Fyers (live)', 'Sample (offline)'],
                                horizontal=True)
 
+        candle_type = st.radio(
+            'Candle type',
+            ['Normal', 'Heikin-Ashi'],
+            horizontal=True,
+            help='Heikin-Ashi filters noise — smoother trends, fewer false signals. '
+                 'Recommended for pivot + Willy scanning.',
+        )
+        use_ha = candle_type == 'Heikin-Ashi'
+
         freshness = st.radio(
             'Live data freshness',
             ['Auto (cached, up to 5 min old)', 'Always live (fresh fetch)'],
@@ -461,7 +477,7 @@ def run() -> None:
                 results = run_scanner(
                     stocks_data, scan_date, timeframes,
                     max_distance_percent=distance, scan_mode=mode,
-                    pivot_tf=pivot_tf_sel)
+                    pivot_tf=pivot_tf_sel, use_heikin_ashi=use_ha)
                 ss['results'] = results
                 ss['df'] = build_results_df(results)
                 ss['csv_bytes'] = results_to_csv_bytes(results)
@@ -623,7 +639,7 @@ def run() -> None:
             st.warning('No daily OHLC available for this stock.')
     with col_b:
         if ins_tf:
-            summary = willy_summary(info[f'candles_{ins_tf}'])
+            summary = willy_summary(info[f'candles_{ins_tf}'], use_ha=use_ha)
             if summary:
                 m1, m2, m3, m4 = st.columns(4)
                 m1.metric('Willy', summary['willy'])

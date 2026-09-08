@@ -328,6 +328,53 @@ def fetch_daily_history_chunked(
     return merged
 
 
+def calculate_heikin_ashi(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Convert normal OHLC candles to Heikin-Ashi candles.
+
+    Heikin-Ashi Formula:
+        HA_Close = (Open + High + Low + Close) / 4
+        HA_Open  = (Previous HA_Open + Previous HA_Close) / 2
+        HA_High  = max(High, HA_Open, HA_Close)
+        HA_Low   = min(Low, HA_Open, HA_Close)
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        DataFrame with columns: datetime, open, high, low, close, volume
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame with Heikin-Ashi OHLC values (volume unchanged)
+    """
+    if df.empty:
+        return df
+
+    required = {'open', 'high', 'low', 'close'}
+    if not required.issubset(df.columns):
+        missing = required - set(df.columns)
+        raise ValueError(f"DataFrame missing required columns: {missing}")
+
+    ha = df.copy()
+
+    # HA_Close = (O + H + L + C) / 4
+    ha['close'] = (df['open'] + df['high'] + df['low'] + df['close']) / 4.0
+
+    # HA_Open = (prev HA_Open + prev HA_Close) / 2  (recursive)
+    ha_open = np.zeros(len(df))
+    ha_open[0] = (df['open'].iloc[0] + df['close'].iloc[0]) / 2.0
+    for i in range(1, len(df)):
+        ha_open[i] = (ha_open[i - 1] + ha['close'].iloc[i - 1]) / 2.0
+    ha['open'] = ha_open
+
+    # HA_High = max(H, HA_O, HA_C)  and  HA_Low = min(L, HA_O, HA_C)
+    ha['high'] = pd.concat([df['high'], ha['open'], ha['close']], axis=1).max(axis=1)
+    ha['low'] = pd.concat([df['low'], ha['open'], ha['close']], axis=1).min(axis=1)
+
+    return ha
+
+
 def fetch_latest_prices(symbols: List[str]) -> Dict[str, float]:
     """
     Fetch the latest traded price for many symbols in one batched call.

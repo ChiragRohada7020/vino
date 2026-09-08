@@ -20,6 +20,7 @@ from .pivots import (
     PIVOT_TIMEFRAMES,
     AUTO_PIVOT_MAP,
 )
+from .candles import calculate_heikin_ashi
 from .willy import calculate_willy, detect_willy_zone, detect_willy_signal
 from .utils import get_previous_trading_day, is_trading_day, IST
 
@@ -94,7 +95,8 @@ def scan_stock_for_date(
     max_distance_percent: float = 0.50,
     scan_mode: str = 'pivot_willy',
     willy_length: int = 21,
-    willy_ema_length: int = 13
+    willy_ema_length: int = 13,
+    use_heikin_ashi: bool = False,
 ) -> Optional[ScanResult]:
     """
     Scan a single stock for a specific date.
@@ -163,7 +165,8 @@ def scan_stock_for_date(
     # Calculate Willy if mode is pivot_willy
     if scan_mode == 'pivot_willy' and len(intraday_df) >= willy_length:
         try:
-            df_with_willy = calculate_willy(intraday_df, willy_length, willy_ema_length)
+            willy_df = calculate_heikin_ashi(intraday_df) if use_heikin_ashi else intraday_df
+            df_with_willy = calculate_willy(willy_df, willy_length, willy_ema_length)
 
             current_willy = df_with_willy['willy'].iloc[-1]
             current_willy_ema = df_with_willy['willy_ema'].iloc[-1]
@@ -193,7 +196,8 @@ def run_scanner(
     timeframes: List[str] = None,
     max_distance_percent: float = 0.50,
     scan_mode: str = 'pivot_willy',
-    pivot_tf: str = 'D'
+    pivot_tf: str = 'D',
+    use_heikin_ashi: bool = False,
 ) -> List[ScanResult]:
     """
     Run the scanner for multiple stocks and timeframes.
@@ -267,7 +271,8 @@ def run_scanner(
                         timeframe=timeframe,
                         scan_date=scan_date,
                         max_distance_percent=max_distance_percent,
-                        scan_mode=scan_mode
+                        scan_mode=scan_mode,
+                        use_heikin_ashi=use_heikin_ashi,
                     )
                     if result:
                         result.pivot_tf = ptf
