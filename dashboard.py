@@ -71,7 +71,22 @@ ZONE_EMOJI = {
 # Data fetching (mirrors main.fetch_live_stock_data, with progress callback)
 # ----------------------------------------------------------------------------
 
-def fetch_live_data(
+@st.cache_data(ttl=300, show_spinner=False, hash_funcs={date: lambda d: d.isoformat()})
+def fetch_live_data_cached(
+    symbols_tuple: tuple,
+    scan_date: date,
+    timeframes_tuple: tuple,
+    pivot_tf: str = 'D',
+    use_cache: bool = True,
+) -> Tuple[Dict[str, Dict], Optional[date]]:
+    """Cached wrapper — converts lists to tuples for hashability."""
+    return _fetch_live_data_impl(
+        list(symbols_tuple), scan_date, list(timeframes_tuple),
+        pivot_tf, use_cache=use_cache,
+    )
+
+
+def _fetch_live_data_impl(
     symbols: List[str],
     scan_date: date,
     timeframes: List[str],
@@ -432,10 +447,9 @@ def run() -> None:
                     symbols, scan_date, timeframes, pivot_tf_sel)
                 prev_day = get_previous_trading_day(scan_date)
             else:
-                stocks_data, prev_day = fetch_live_data(
-                    symbols, scan_date, timeframes,
-                    pivot_tf=pivot_tf_sel, progress_callback=cb,
-                    use_cache=use_cache)
+                stocks_data, prev_day = fetch_live_data_cached(
+                    tuple(symbols), scan_date, tuple(timeframes),
+                    pivot_tf_sel, use_cache)
             progress.empty()
 
             if not stocks_data:
