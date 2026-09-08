@@ -127,6 +127,11 @@ def scan_stock_for_date(
     ScanResult or None
         Scan result if stock is near a pivot, None otherwise
     """
+    # When HA mode, convert daily OHLC and intraday candles to HA
+    # so pivot levels match the HA chart
+    if use_heikin_ashi:
+        intraday_df = calculate_heikin_ashi(intraday_df)
+
     # Calculate pivot levels from previous day's OHLC
     try:
         pivot_levels = calculate_traditional_pivots(
@@ -163,10 +168,10 @@ def scan_stock_for_date(
     )
 
     # Calculate Willy if mode is pivot_willy
+    # Note: intraday_df is already HA if use_heikin_ashi=True (converted above)
     if scan_mode == 'pivot_willy' and len(intraday_df) >= willy_length:
         try:
-            willy_df = calculate_heikin_ashi(intraday_df) if use_heikin_ashi else intraday_df
-            df_with_willy = calculate_willy(willy_df, willy_length, willy_ema_length)
+            df_with_willy = calculate_willy(intraday_df, willy_length, willy_ema_length)
 
             current_willy = df_with_willy['willy'].iloc[-1]
             current_willy_ema = df_with_willy['willy_ema'].iloc[-1]

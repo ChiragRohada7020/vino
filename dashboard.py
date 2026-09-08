@@ -299,7 +299,7 @@ def willy_summary(df: pd.DataFrame, length: int = 21, ema_length: int = 13,
     if df is None or len(df) < length:
         return {}
     if use_ha:
-        df = calculate_heikin_ashi(df)
+        df = calculate_heikin_ashi(df.copy())
     w = calculate_willy(df, length, ema_length)
     cur_w, cur_e = w['willy'].iloc[-1], w['willy_ema'].iloc[-1]
     prev_w, prev_e = w['willy'].iloc[-2], w['willy_ema'].iloc[-2]
