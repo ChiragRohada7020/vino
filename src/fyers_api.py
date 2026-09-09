@@ -87,9 +87,11 @@ class FyersAPI:
 
     def get_auth_code_url(self) -> str:
         """Return the URL the user must visit to generate an auth code."""
+        # Fyers expects app_id in format "XXXXXXXXXX-100"
+        client_id = f'{self.app_id}-100' if '-' not in self.app_id else self.app_id
         return (
             f'{self.api_base}/generate-authcode'
-            f'?client_id={self.app_id}'
+            f'?client_id={client_id}'
             f'&redirect_uri={self.redirect_url}'
             f'&response_type=code'
             f'&state=None'

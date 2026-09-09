@@ -41,8 +41,7 @@ except ImportError:                                   # pragma: no cover
 
 logger = logging.getLogger(__name__)
 
-VAGATOR_BASE = 'https://api-t1.fyers.in/vagator/v2'
-TOKEN_URL = 'https://api-t1.fyers.in/api/v3/token'
+API_BASE = 'https://api-t1.fyers.in/api/v2'
 TIMEOUT = 30
 
 
@@ -65,6 +64,14 @@ def _b64(text: str) -> str:
 def _post_json(url: str, payload: dict) -> dict:
     resp = requests.post(url, json=payload, timeout=TIMEOUT,
                          headers={'Content-Type': 'application/json'})
+    try:
+        return resp.json()
+    except ValueError:
+        return {'s': 'error', 'message': f'non-JSON HTTP {resp.status_code}'}
+
+
+def _get_json(url: str, params: dict = None) -> dict:
+    resp = requests.get(url, params=params, timeout=TIMEOUT)
     try:
         return resp.json()
     except ValueError:
@@ -108,16 +115,16 @@ def auto_login(app_id: str, user_id: str, pin: str,
     session = requests.Session()
 
     # 1) send login OTP challenge (request_key for the TOTP step)
-    r1 = _post_json(f'{VAGATOR_BASE}/send_login_otp_v2',
-                    {'fy_id': _b64(user_id), 'app_id': '2'})
+    r1 = _post_json(f'{API_BASE}/send_login_otp',
+                    {'fy_id': _b64(user_id), 'app_type': '2'})
     request_key = r1.get('request_key') or r1.get('data', {}).get('request_key')
     if not request_key:
         logger.error('auto_login step 1 failed: %s', r1)
         return None
 
     # 2) verify TOTP
-    r2 = _post_json(f'{VAGATOR_BASE}/verify_otp',
-                    {'request_key': request_key, 'otp': otp})
+    r2 = _post_json(f'{API_BASE}/verify_totp',
+                    {'request_key': request_key, 'totp': str(otp)})
     temp_token = r2.get('access_token') or r2.get('data', {}).get('access_token')
     if not temp_token:
         logger.error('auto_login step 2 failed (TOTP): %s', r2)
@@ -125,9 +132,9 @@ def auto_login(app_id: str, user_id: str, pin: str,
 
     # 3) verify PIN
     time.sleep(0.3)
-    r3 = _post_json(f'{VAGATOR_BASE}/verify_pin_v2',
+    r3 = _post_json(f'{API_BASE}/verify_pin',
                     {'request_key': temp_token, 'identity_type': 'pin',
-                     'identifier': _b64(pin), 'recaptcha_token': ''})
+                     'identifier': _b64(pin)})
     pin_token = r3.get('access_token') or r3.get('data', {}).get('access_token')
     if not pin_token:
         logger.error('auto_login step 3 failed (PIN): %s', r3)
@@ -137,7 +144,7 @@ def auto_login(app_id: str, user_id: str, pin: str,
     time.sleep(0.3)
     try:
         r4 = session.get(
-            TOKEN_URL,
+            f'{API_BASE}/token',
             params={'client_id': app_id, 'front_id': user_id,
                     'is_new_token': 'true', 'app_id': '2',
                     'device_id': str(uuid.uuid4()),
